@@ -1,0 +1,27 @@
+{
+ "positions": {},
+ "trades": [],
+ "decisions": {
+  "2026-11-24": {
+   "at": "2026-11-24T18:16:05-05:00",
+   "source": "Yahoo (Yahoo price for AAPL, AMD, AMZN, ASML, AVGO, COST, GOOG, META, MSFT, NFLX, NVDA, TSLA)",
+   "universe": [
+    "NVDA",
+    "AAPL",
+    "GOOG",
+    "MSFT",
+    "AMZN",
+    "TSLA",
+    "META",
+    "AVGO",
+    "ASML",
+    "NFLX",
+    "COST",
+    "AMD"
+   ],
+   "events": [],
+   "sent": false
+  }
+ },
+ "updated": "2026-11-24T18:16:05-05:00"
+}

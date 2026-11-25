@@ -1,0 +1,33 @@
+# Swing alerts: Telegram alerts only, no orders. Telegram credentials: env vars TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID
+# or config/secrets.yaml (git-ignored; copy secrets.example.yaml).
+alerts_only: true           # must stay true; the scanner refuses to start otherwise
+
+ib:
+  host: 127.0.0.1
+  port: 4001                # live Gateway is fine: the session is opened read-only (no orders possible)
+  client_id: 99             # must differ from pivot-live (97 trader, 98 swing)
+
+schedule:                   # run_alerts.bat is scheduled at 15:40 ET on weekdays
+  decide_minutes_before_close: 5      # 15:55 on normal days, 12:55 on half days (IB calendar)
+  preview_minutes_before_decide: 5    # "what happens if prices stay here" message at 15:50
+
+rules:                      # same as the research (pivot-live/tools/stock_swing_ndx.py, "heavy 12")
+  buy_usd: 3000             # paper size per buy (stock-equivalent), used for the P/L in alerts
+  cap_usd: 30000            # max paper capital open; when full, lowest RSI(2) first, rest SKIPPED
+  max_buys: 3               # first buy + up to 2 adds, each >= 1 ATR below the previous buy
+  max_days: 5               # sell on the first up day, or on day 5
+
+sanity_max_move: 0.25       # warn if a price is more than 25% away from yesterday's close
+
+universe:
+  mode: auto                # auto = top N of the pool by market cap at the prior year end; fixed = `symbols`
+  top: 12
+  calendar_symbol: AAPL     # trading hours / holidays come from this stock's IB calendar
+  pool: [AAPL, MSFT, AMZN, GOOG, META, NVDA, TSLA, AVGO, COST, PEP, CSCO, INTC, CMCSA, ADBE, NFLX, AMGN, TXN, QCOM,
+         GILD, SBUX, BKNG, AMD, INTU, HON, MDLZ, ISRG, ADP, PYPL, TMUS, CHTR, AMAT, MU, LRCX, ADI, REGN, VRTX, KLAC,
+         ASML, PANW, MRVL]
+  fallback: [NVDA, AAPL, GOOG, MSFT, AMZN, TSLA, META, AVGO, ASML, NFLX, COST, AMD]   # 2026 pick
+  symbols: []
+
+files:
+  state_dir: state

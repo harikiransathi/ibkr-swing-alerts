@@ -1,0 +1,17 @@
+2026-11-24 18:15:52,548 ERROR ib_insync.client: API connection failed: ConnectionRefusedError(22, 'The remote computer refused the network connection', None, 1225, None)
+2026-11-24 18:15:52,550 ERROR ib_insync.client: Make sure API port on TWS/IBG is open
+2026-11-24 18:15:52,551 ERROR alerts.scanner: IB connect failed (try 1): [WinError 1225] The remote computer refused the network connection
+2026-11-24 18:15:52,552 INFO alerts.notify: notify: WARNING: IB Gateway unreachable on port 4001; using Yahoo prices today. Double-check prices before acting.
+2026-11-24 18:16:01,168 INFO alerts.scanner: AAPL: 500 closes from Yahoo, last 349.08
+2026-11-24 18:16:01,386 INFO alerts.scanner: AMD: 500 closes from Yahoo, last 453.46
+2026-11-24 18:16:01,605 INFO alerts.scanner: AMZN: 500 closes from Yahoo, last 255.39
+2026-11-24 18:16:01,846 INFO alerts.scanner: ASML: 500 closes from Yahoo, last 1383.78
+2026-11-24 18:16:02,103 INFO alerts.scanner: AVGO: 500 closes from Yahoo, last 313.55
+2026-11-24 18:16:02,356 INFO alerts.scanner: COST: 500 closes from Yahoo, last 1097.91
+2026-11-24 18:16:02,592 INFO alerts.scanner: GOOG: 500 closes from Yahoo, last 279.53
+2026-11-24 18:16:02,857 INFO alerts.scanner: META: 500 closes from Yahoo, last 597.60
+2026-11-24 18:16:03,116 INFO alerts.scanner: MSFT: 500 closes from Yahoo, last 492.50
+2026-11-24 18:16:03,372 INFO alerts.scanner: NFLX: 500 closes from Yahoo, last 58.10
+2026-11-24 18:16:03,613 INFO alerts.scanner: NVDA: 500 closes from Yahoo, last 165.05
+2026-11-24 18:16:03,856 INFO alerts.scanner: TSLA: 500 closes from Yahoo, last 385.46
+2026-11-24 18:16:05,640 INFO alerts.notify: notify: 2026-11-24 decision at 18:16 on Yahoo (Yahoo price for AAPL, AMD, AMZN, ASML, AVGO, COST, GOOG, META, MSFT, NFLX, NVDA, TSLA) prices: 0 sell, 0 buy | Open: 0 stocks, $0 of $30,000
