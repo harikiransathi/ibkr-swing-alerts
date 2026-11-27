@@ -10,12 +10,17 @@ ib:
 schedule:                   # run_alerts.bat is scheduled at 15:40 ET on weekdays
   decide_minutes_before_close: 5      # 15:55 on normal days, 12:55 on half days (IB calendar)
   preview_minutes_before_decide: 5    # "what happens if prices stay here" message at 15:50
+  remind_until_close_seconds: 60      # repeat BUY/ADD Telegram reminder every 60s until 16:00 ET (0 = off)
 
-rules:                      # same as the research (pivot-live/tools/stock_swing_ndx.py, "heavy 12")
+rules:                      # upgraded Config B (pivot-live/tools/stock_swing_oob.py): +32% return, 3.2x under LEAPS friction
   buy_usd: 3000             # paper size per buy (stock-equivalent), used for the P/L in alerts
   cap_usd: 30000            # max paper capital open; when full, lowest RSI(2) first, rest SKIPPED
   max_buys: 3               # first buy + up to 2 adds, each >= 1 ATR below the previous buy
-  max_days: 5               # sell on the first up day, or on day 5
+  max_days: 7               # sell when RSI(2) > 50, or on day 7 (avg hold ~3.1d, avg gain +1.38% -> clears LEAPS spreads)
+  ibs_max: 0.25             # require close in bottom 25% of today's H-L range (cuts DD, lifts Sharpe 0.96 -> 1.14)
+  exit_mode: rsi2_gt_50     # rsi2_gt_50 (recommended for LEAPS) or up_day
+  exit_rsi: 50
+  min_breadth: 1            # every BUY alert prints breadth X/12; set to 3 to auto-filter out isolated single-stock dips
 
 sanity_max_move: 0.25       # warn if a price is more than 25% away from yesterday's close
 

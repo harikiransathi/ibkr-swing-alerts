@@ -63,7 +63,7 @@ class Scanner:
         self.state_dir.mkdir(parents=True, exist_ok=True)
         self.state_file = self.state_dir / ("alerts_dry.json" if dry_run else "alerts.json")
         self.today = now().date()
-        self.tg = Telegram(prefix="[SWING ALERT] ") if not dry_run else Telegram.__new__(Telegram)
+        self.tg = Telegram(prefix="[STOCK LEAPS ALERT] ") if not dry_run else Telegram.__new__(Telegram)
         if dry_run:
             self.tg.enabled, self.tg.prefix = False, ""
         self.state = self.load_state()
@@ -155,6 +155,21 @@ class Scanner:
                           "check for a split or bad tick. Using it anyway.")
         return got, note
 
+    def day_hl(self, syms: list[str]) -> dict[str, tuple[float, float]]:
+        hl: dict[str, tuple[float, float]] = {}
+        if self.src and hasattr(self.src, "day_hl"):
+            try:
+                hl = self.src.day_hl(syms)
+            except Exception as ex:  # noqa: BLE001
+                log.warning("IB day_hl failed: %s", ex)
+        miss = [s for s in syms if s not in hl]
+        if miss and self.src and self.src.name in ("IB", "Yahoo"):
+            try:
+                hl.update(YahooData().day_hl(miss))
+            except Exception as ex:  # noqa: BLE001
+                log.warning("Yahoo day_hl failed: %s", ex)
+        return hl
+
     def wait_until(self, t: datetime) -> None:
         while now() < t:
             left = (t - now()).total_seconds()
@@ -166,12 +181,21 @@ class Scanner:
     # ---- messages ------------------------------------------------------------------------------------------
     def fmt(self, e: dict) -> str:
         size = float(self.r["buy_usd"])
+        exit_mode = str(self.r.get("exit_mode", "up_day"))
+        sell_desc = (f"RSI(2) > {self.r.get('exit_rsi', 50):g}, or day {self.r['max_days']}"
+                     if exit_mode == "rsi2_gt_50"
+                     else f"first close above the previous close, or day {self.r['max_days']}")
         if e["type"] in ("buy", "add"):
             what = "BUY" if e["type"] == "buy" else f"ADD (buy {e['n']} of {e['max']})"
-            extra = (f"RSI(2) {e['rsi2']:.1f} < 10" if e["type"] == "buy"
-                     else f"price is more than 1 ATR ({e['atr']:.2f}) below the last buy {e['prev_buy']:.2f}")
+            if e["type"] == "buy":
+                ibs_txt = f", IBS {e['ibs']:.2f}" if e.get("ibs") is not None else ""
+                br = e.get("breadth")
+                br_txt = f", breadth {br[0]}/{br[1]} oversold" if br else ""
+                extra = f"RSI(2) {e['rsi2']:.1f} < 10{ibs_txt}{br_txt}"
+            else:
+                extra = f"price is more than 1 ATR ({e['atr']:.2f}) below the last buy {e['prev_buy']:.2f}"
             return (f"{what} {e['sym']} @ {e['px']:.2f}\n{extra}. Paper size ${size:,.0f}. "
-                    f"Sell rule: first close above the previous close, or day {self.r['max_days']}.")
+                    f"Sell rule: {sell_desc}.")
         if e["type"] == "sell":
             legs = ", ".join(f"{b['px']:.2f} ({b['date'][5:]})" for b in e["legs"])
             return (f"SELL {e['sym']} @ {e['exit']:.2f} - all {e['buys']} buy(s): {legs}\nReason: {e['why']}. "
@@ -224,19 +248,39 @@ class Scanner:
             self.wait_until(preview_at)
         if not immediate:
             pr, _ = self.prices()
-            lines = rules.preview(self.state, pr, self.hist, self.syms, self.r)
+            hl = self.day_hl(sorted(pr)) if self.r.get("ibs_max") is not None else {}
+            lines = rules.preview(self.state, pr, self.hist, self.syms, self.r, day_hl=hl)
             self.send(f"Preview {now():%H:%M} (decision at {decide:%H:%M}):\n" +
                       ("\n".join(lines) if lines else "nothing close to a signal"))
             self.wait_until(decide)
         pr, pnote = self.prices()
+        hl = self.day_hl(sorted(pr)) if self.r.get("ibs_max") is not None else {}
         for s in self.state["positions"]:
             if s not in pr:
                 self.send(f"WARNING: no price for held {s}; it is not checked for a sell today")
-        events = rules.step(self.state, key, pr, self.hist, self.syms, self.r)
+        events = rules.step(self.state, key, pr, self.hist, self.syms, self.r, day_hl=hl)
         self.state["decisions"][key] = {"at": now().isoformat(timespec="seconds"), "source": self.src.name + pnote,
                                         "universe": self.syms, "events": events, "sent": False}
         self.save()
         self.announce(key, events, self.src.name + pnote)
+        if not immediate:
+            self.remind_buys(events, close)
+
+    def remind_buys(self, events: list[dict], close: datetime) -> None:
+        """Repeat a concise Telegram reminder every N seconds until market close when BUY/ADD candidates exist."""
+        every = int(self.cfg.get("schedule", {}).get("remind_until_close_seconds", 60))
+        buys = [e for e in events if e.get("type") in ("buy", "add")]
+        if every <= 0 or not buys:
+            return
+        items = ", ".join(f"{e['type'].upper()} {e['sym']} @ {e['px']:.2f}" for e in buys)
+        while True:
+            nxt = now() + timedelta(seconds=every)
+            if nxt >= close:
+                return
+            self.wait_until(nxt)
+            left_m = max(1, int(round((close - now()).total_seconds() / 60)))
+            self.send(f"REMINDER ({now():%H:%M}, {left_m}m to close): {items}")
+            self.tg.flush()
 
     def announce(self, key: str, events: list[dict], source: str) -> None:
         order = ("sell", "buy", "add", "skip", "stale")

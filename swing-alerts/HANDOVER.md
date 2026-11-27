@@ -1,10 +1,10 @@
 # Swing alerts - handover
 
-Last updated: 2026-11-25.
+Last updated: 2026-11-27.
 
 ## 1. What this is
 This is a daily scanner. At 15:55 ET it sends Telegram alerts to buy, add to or sell large-cap Nasdaq stocks, using a
-short-term "buy the dip, sell the first up day" rule.
+short-term "buy exhausted dips (`RSI(2) < 10` + `IBS < 0.25`), sell when momentum recovers (`RSI(2) > 50` or day 7)" rule.
 
 **It never places orders.** The owner executes the trades by hand, currently with LEAPS calls. The scanner keeps a
 paper book in stock-equivalent dollars. It assumes each alert filled at the alert price.
@@ -25,19 +25,19 @@ this one at runtime except the IB Gateway, which this scanner uses with its own 
 | Workspace rules | Back up before deleting (`.bak`). Commit or push only when the owner asks. No AI signatures in commits. |
 
 ## 3. Rules
-They come from the research in `pivot-live/tools/`: `stock_swing.py`, `stock_swing_port.py`, `stock_swing_wf.py`
-and `stock_swing_ndx.py`.
+They come from the research in `pivot-live/tools/`: `stock_swing.py`, `stock_swing_port.py`, `stock_swing_wf.py`,
+`stock_swing_ndx.py`, and `stock_swing_oob.py` (upgraded Config B, 2026-11-27).
 
 | Item | Rule |
 |---|---|
 | Universe | The 12 largest stocks of a 40-stock Nasdaq-100 pool by market cap at the prior year end. They are picked once each January, cached in `state/universe_<year>.json`, and frozen for the year. |
-| Decision time | 5 minutes before the close (15:55; 12:55 on half days), on the latest price `p` |
-| First buy | RSI(2) of prior daily closes plus `p` is below 10 |
+| Decision time | 5 minutes before the close (15:55; 12:55 on half days), on the latest price `p` and today's high/low |
+| First buy | `RSI(2) < 10` **and** `IBS = (p - day_low) / (day_high - day_low) < 0.25` (closes in bottom 25% of today's range). Every BUY alert also prints live breadth (`X/12 oversold`; broad dips `>= 3/12` carry almost all of the edge). |
 | Add (2nd and 3rd buy) | Already held, fewer than 3 buys, and `p` is at least 1 ATR below the previous buy. ATR = mean absolute close-to-close change over the last 14 changes. |
-| Sell (all buys together) | `p` is above yesterday's close, or the position is on its 5th trading day |
+| Sell (all buys together) | `RSI(2) > 50`, or the position is on its 7th trading day (avg hold ~3.1d, avg gain +1.38% -> clears LEAPS bid-ask spreads; 3.2x better than the old 1-day exit at 40 bps friction). |
 | Size and cap | $3,000 paper per buy and $30,000 max open. When the cap is full, signals with the lowest RSI(2) are taken first; the rest are alerted as SKIPPED. |
 | Order of processing | Sells first, then buys. A stock sold today can be bought again the same day, as in the backtest. |
-| Stop loss | None. The 5-day limit is the only exit for a falling position. |
+| Stop loss | None. The 7-day limit is the only exit for a falling position. |
 
 The 2026 universe is NVDA, AAPL, GOOG, MSFT, AMZN, TSLA, META, AVGO, ASML, NFLX, COST and AMD. Preview next year's
 list with `python -m alerts.universe 2027`.

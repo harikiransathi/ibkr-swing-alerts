@@ -80,6 +80,14 @@ class IBData:
                 out[s] = float(p)
         return out
 
+    def day_hl(self, syms: list[str]) -> dict[str, tuple[float, float]]:
+        out = {}
+        tickers = self.ib.reqTickers(*[self.contract(s) for s in syms])
+        for s, t in zip(syms, tickers):
+            if _ok(t.high) and _ok(t.low) and float(t.high) > float(t.low):
+                out[s] = (float(t.high), float(t.low))
+        return out
+
 
 class YahooData:
     name = "Yahoo"
@@ -113,4 +121,17 @@ class YahooData:
                     out[s] = float(p)
             except Exception as ex:  # noqa: BLE001
                 log.warning("Yahoo price %s failed: %s", s, ex)
+        return out
+
+    def day_hl(self, syms: list[str]) -> dict[str, tuple[float, float]]:
+        import yfinance as yf
+        out = {}
+        for s in syms:
+            try:
+                fi = yf.Ticker(s).fast_info
+                hi, lo = fi.get("day_high"), fi.get("day_low")
+                if _ok(hi) and _ok(lo) and float(hi) > float(lo):
+                    out[s] = (float(hi), float(lo))
+            except Exception as ex:  # noqa: BLE001
+                log.warning("Yahoo high/low %s failed: %s", s, ex)
         return out
