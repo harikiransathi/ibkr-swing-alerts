@@ -1,0 +1,7 @@
+**/config/secrets.yaml
+**/state/
+**/logs/
+**/__pycache__/
+**/.pytest_cache/
+*.pyc
+*.bak
